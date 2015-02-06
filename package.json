@@ -1,6 +1,6 @@
 {
   "name": "cogs-transformer-concat-amd",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Casey Foster <c@sey.me>",
   "description": "A Cogs transformer for concatenating AMD modules into one build.",
   "license": "MIT",
@@ -14,12 +14,9 @@
     "underscore": "1.7.0"
   },
   "devDependencies": {
-    "cogs": "caseywebdev/cogs#a72b995df6cf14f5879340ce1f8103c367848d38",
-    "chai": "1.10.0",
-    "istanbul": "0.3.5",
-    "mocha": "2.1.0"
+    "cogs-test-helper": "1.0.0"
   },
   "scripts": {
-    "test": "istanbul cover _mocha test/test.js"
+    "test": "cogs-test-helper test/test.js"
   }
 }
