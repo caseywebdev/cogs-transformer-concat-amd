@@ -1,4 +1,5 @@
 var config = require('cogs/src/config');
+var crypto = require('crypto');
 var expect = require('chai').expect;
 var fs = require('fs');
 var getBuild = require('cogs/src/get-build');
@@ -8,9 +9,32 @@ var beforeEach = global.beforeEach;
 var describe = global.describe;
 var it = global.it;
 
+var getHash = function (buffer) {
+  var hash = crypto.createHash('md5');
+  hash.end(buffer);
+  return hash.read().toString('hex');
+};
+
+var getFileHash = function (filePath) {
+  return getHash(fs.readFileSync(filePath));
+};
+
 var FIXTURES = {
   'test/config.json': {
-    'test/square.js': 'test/output.js',
+    'test/square.js': {
+      path: 'test/square.js',
+      buffer: fs.readFileSync('test/output.js'),
+      hash: getFileHash('test/output.js'),
+      requires: [{
+        path: 'test/multiply.js',
+        hash: getFileHash('test/multiply.js')
+      }, {
+        path: 'test/square.js',
+        hash: getFileHash('test/square.js')
+      }],
+      links: [],
+      globs: []
+    },
     'test/error.js': Error
   }
 };
@@ -24,19 +48,15 @@ Object.keys(FIXTURES).forEach(function (configPath) {
     });
 
     Object.keys(builds).forEach(function (inputPath) {
-      var outputPath = builds[inputPath];
+      var expected = builds[inputPath];
 
       describe(inputPath, function () {
-        var expectsError = outputPath === Error;
+        var expectsError = expected === Error;
 
         it(expectsError ? 'fails' : 'succeeds', function (done) {
           getBuild(inputPath, function (er, build) {
             if (expectsError) expect(er).to.be.an.instanceOf(Error);
-            else {
-              if (er) return done(er);
-              var output = fs.readFileSync(outputPath);
-              expect(build.buffer).to.deep.equal(output);
-            }
+            else expect(build).to.deep.equal(expected);
             done();
           });
         });
