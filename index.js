@@ -1,18 +1,20 @@
 var _ = require('underscore');
 var async = require('async');
-var getDependencyHashes = require('cogs/src/get-dependency-hashes');
-var getExt = require('cogs/src/get-ext');
-var getOutExt = require('cogs/src/get-out-ext');
 var glob = require('glob');
 var path = require('path');
 
 var DEFAULTS = {
-  base: '.'
+  base: '.',
+  extensions: ['js']
 };
 var ADD_NAME = /(define\s*\(\s*)([^\s'"])/;
 var CHANGE_NAME = /(define\s*\(\s*['"]).*?(['"])/;
 var DEFINE =
   /define\s*\(\s*(?:['"](.*?)['"]\s*,\s*)?(?:\[([\s\S]*?)\])?(?!\s*\))/g;
+
+var getExt = function (filePath) {
+  return path.extname(filePath).slice(1);
+};
 
 var getName = function (pathName, options) {
   var ext = getExt(pathName);
@@ -53,15 +55,13 @@ var getDependencies = function (defines, options, cb) {
         var pattern = path.join(options.base, id) + '*';
         async.waterfall([
           _.partial(glob, pattern, {nodir: true}),
-          function (matches) {
-            var match = _.chain(matches)
-              .find(function (match) {
-                return getOutExt(getExt(match)) === 'js' &&
-                  getName(match, options) === id;
-              })
-              .value();
+          function (filePaths) {
+            var match = _.find(filePaths, function (filePath) {
+              return _.include(options.extensions, getExt(filePath)) &&
+                getName(filePath, options) === id;
+            });
             if (!match) return cb(new Error("Cannot find module '" + id + "'"));
-            cb(null, {path: path.relative('.', match)});
+            cb(null, path.relative('.', match));
           }
         ], cb);
       }, cb);
@@ -86,10 +86,8 @@ module.exports = function (file, options, cb) {
 
   async.waterfall([
     _.partial(getDependencies, getDefines(source), options),
-    getDependencyHashes,
     function (hashes, cb) {
-      var selfRequire = _.find(file.requires, _.pick(file, 'path'));
-      var selfIndex = _.indexOf(file.requires, selfRequire);
+      var selfIndex = _.indexOf(file.requires, file.path);
       cb(null, {
         buffer: new Buffer(source),
         requires: file.requires.slice(0, selfIndex)
