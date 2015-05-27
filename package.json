@@ -1,6 +1,6 @@
 {
   "name": "cogs-transformer-concat-amd",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": "Casey Foster <c@sey.me>",
   "description": "A Cogs transformer for concatenating AMD modules into one build.",
   "license": "MIT",

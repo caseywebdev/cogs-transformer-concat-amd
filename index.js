@@ -10,7 +10,7 @@ var DEFAULTS = {
 var ADD_NAME = /(define\s*\(\s*)([^\s'"])/;
 var CHANGE_NAME = /(define\s*\(\s*['"]).*?(['"])/;
 var DEFINE =
-  /define\s*\(\s*(?:['"](.*?)['"]\s*,\s*)?(?:\[([\s\S]*?)\])?(?!\s*\))/g;
+  /define\s*\(\s*(?:['"](.*?)['"]\s*,\s*)?(?:\[\s*([\s\S]*?)\s*\])?(?!\s*\))/g;
 
 var getExt = function (filePath) {
   return path.extname(filePath).slice(1);
