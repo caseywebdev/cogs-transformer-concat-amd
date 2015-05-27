@@ -10,7 +10,8 @@ var DEFAULTS = {
 var ADD_NAME = /(define\s*\(\s*)([^\s'"])/;
 var CHANGE_NAME = /(define\s*\(\s*['"]).*?(['"])/;
 var DEFINE =
-  /define\s*\(\s*(?:['"](.*?)['"]\s*,\s*)?(?:\[\s*([\s\S]*?)\s*\])?(?!\s*\))/g;
+  /define\s*\(\s*(?:['"](.*?)['"]\s*,\s*)?(?:\[\s*([\s\S]*?)\s*\])?(?!\s*\))/;
+var DEFINED_IDS = ['require', 'exports', 'module'];
 
 var getExt = function (filePath) {
   return path.extname(filePath).slice(1);
@@ -22,33 +23,15 @@ var getName = function (pathName, options) {
   return path.relative(options.base, pathName);
 };
 
-var getDefines = function (source) {
-  var match;
-  var matches = [];
-  while (match = DEFINE.exec(source)) matches.push(match);
-  return matches;
+var getRequiredIds = function (define) {
+  return define[2] ?
+    _.difference(
+      _.invoke(define[2].split(/\s*,\s*/), 'slice', 1, -1),
+      DEFINED_IDS
+    ) : [];
 };
 
-var getRequiredIds = function (defines) {
-  var definedIds = ['require', 'exports', 'module'];
-  var requiredIds = [];
-  _.each(defines, function (match) {
-    definedIds.push(match[1]);
-    if (match[2]) {
-      requiredIds = requiredIds.concat(
-        _.invoke(match[2].split(/\s*,\s*/), 'slice', 1, -1)
-      );
-    }
-  });
-
-  // Remove any modules that were defined in the file from the required list.
-  // These modules will not be necessary to add as dependencies since they are
-  // self-contained.
-  return _.difference(requiredIds, definedIds);
-};
-
-var getDependencies = function (defines, options, cb) {
-  var ids = getRequiredIds(defines);
+var getDependencies = function (ids, options, cb) {
   async.parallel({
     requires: function (cb) {
       async.map(ids, function (id, cb) {
@@ -70,22 +53,25 @@ var getDependencies = function (defines, options, cb) {
 };
 
 module.exports = function (file, options, cb) {
-  options = _.extend({}, DEFAULTS, options);
-  var name = getName(file.path, options);
   var source = file.buffer.toString();
-  var defines = getDefines(source);
+  var define = DEFINE.exec(source);
 
-  // If the source has one named module in it, rename it to what the user
+  // If this file lacks a `define` statement, there's nothing to do.
+  if (!define) return cb(null, {});
+
+  // If the source has a named module in it, rename it to what the user
   // expects it to be. This generally only happens with authors release
   // packages that don't follow the best practice of defining themselves
   // anonymously. If that's not the case, simply add the name to the `define`.
+  options = _.extend({}, DEFAULTS, options);
+  var name = getName(file.path, options);
   source =
-    defines.length === 1 && defines[0][1] ?
+    define[1] ?
     source.replace(CHANGE_NAME, '$1' + name + '$2') :
     source.replace(ADD_NAME, "$1'" + name + "', $2");
 
   async.waterfall([
-    _.partial(getDependencies, getDefines(source), options),
+    _.partial(getDependencies, getRequiredIds(define), options),
     function (hashes, cb) {
       var selfIndex = _.indexOf(file.requires, file.path);
       cb(null, {

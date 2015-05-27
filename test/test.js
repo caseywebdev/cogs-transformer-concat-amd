@@ -10,6 +10,9 @@ helper.run({
         path: 'test/multiply.js',
         hash: helper.getFileHash('test/multiply.js')
       }, {
+        path: 'test/divide.js',
+        hash: helper.getFileHash('test/divide.js')
+      }, {
         path: 'test/square.js',
         hash: helper.getFileHash('test/square.js')
       }],
